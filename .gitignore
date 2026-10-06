@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.pyc
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Standard OS exclusions
+Thumbs.db
+.DS_Store
+
+# IDE configurations
+.vscode/
