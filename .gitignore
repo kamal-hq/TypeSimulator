@@ -1,21 +1,29 @@
-# Python caches
+# Python caches & environments
 __pycache__/
 *.pyc
 *$py.class
-
-# Virtual environments
+*.egg-info/
+.pytest_cache/
 venv/
 env/
 .venv/
 
-# PyInstaller build artifacts
+# Node & Frontend builds
+frontend/node_modules/
+frontend/dist/
+*.log
+.env
+.env.local
+
+# PyInstaller & Windows Installer artifacts
 build/
 dist/
-*.spec
+installer/output/
+*.exe
+*.msi
 
-# Standard OS exclusions
+# Standard OS & IDE exclusions
 Thumbs.db
 .DS_Store
-
-# IDE configurations
 .vscode/
+.idea/

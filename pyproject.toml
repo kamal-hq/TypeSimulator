@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "typesimulator"
+version = "2.0.0"
+description = "OS-level humanized keystroke automation studio for Windows with PyWebView desktop UI and Vercel web sandbox."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Muhammad Kamal" }]
+dependencies = [
+  "pynput>=1.7.7",
+  "pywebview>=5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pyinstaller>=6.0",
+  "pillow>=10.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"

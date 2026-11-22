@@ -1,66 +1,125 @@
-# TypeSimulator
+# TypeSimulator v2
 
-> TypeSimulator is an OS-level keystroke simulator designed to bypass front-end web paste restrictions using a humanized typing cadence.
+> **Human cadence. Machine precision.** An OS-level humanized keystroke automation studio for Windows—engineered for paste-restricted web forms, VDI/VM/remote consoles without clipboard sharing, QA regression runs, and live demos.
 
 ---
 
 ## Overview
 
-TypeSimulator acts as a bridge between your clipboard and restrictive web environments. Instead of relying on standard copy-paste functionality—which is often blocked, disabled, or monitored by front-end web applications—this tool injects characters directly at the OS level. By utilizing randomized delays and cadence variations, it mimics natural human typing patterns to seamlessly and safely input your text.
+TypeSimulator v2 pairs a **Figma-crafted React/TypeScript Studio UI** with a dual-runtime engine architecture:
+
+1. **Web Mode (Vercel):** A live product showcase, Windows `.exe` download portal, and an **Interactive Paste-Blocked Sandbox** where anyone can test biomechanical typing cadence, typo simulation, and text sanitization directly in the browser.
+2. **Desktop Mode (Standalone Windows `.exe` Installer):** Wraps the exact same React frontend inside Windows' built-in Edge WebView2 via **PyWebView**, backed by **Python Engine v2** for real OS-level `SendInput` keystroke injection, global hotkeys, and active-window safety protection—requiring zero Python installation for end users.
 
 ---
 
 ## Key Features
 
-- **Asynchronous UI:** A responsive, non-blocking interface built with CustomTkinter.
-- **Global Hotkey Triggers:** System-wide hotkeys allow you to control the simulation from any window.
-- **Strict Text Sanitization:** Automatically cleans and normalizes smart quotes, em/en dashes, and carriage returns to prevent injection errors.
-- **Randomized Typing Delays:** Variable sleep intervals for standard characters versus punctuation and spaces, ensuring an authentic human typing rhythm.
+- **Biomechanical Cadence Engine:** WPM-anchored log-normal timing (`25–150 WPM`) with presets (*Natural*, *Fast*, *Thoughtful*, *Steady*, *Custom*), word-burst acceleration, and natural punctuation/paragraph pauses.
+- **QWERTY Typo Simulator:** Optional configurable error rate (`0–8%`) using a physical adjacent-key neighbor map with realistic reaction pause and `Backspace` correction.
+- **Active-Window Focus Guard:** Uses native Win32 `ctypes` (`GetForegroundWindow`) to lock onto the target `HWND` and **auto-pause instantly** if another window or popup steals focus mid-run.
+- **Strict Text Sanitizer & Diff Report:** Automatically detects and normalizes smart quotes, em/en dashes, ellipses (`…`), non-breaking spaces, zero-width characters, bullet symbols, `\r\n` line endings, optional Markdown, plus configurable `Enter` vs `Shift+Enter` and `Tab` handling.
+- **Non-Destructive Transport & Global Hotkeys:** Lock-protected FSM (`IDLE → COUNTDOWN → TYPING ↔ PAUSED → COMPLETED | ABORTED`) with zero-latency `Event.wait` cancellation, exact cursor preservation on pause/resume, and customizable global hotkeys (defaults: `F9` Start/Resume, `F10` Pause, `Ctrl+Shift+Esc` Abort).
+- **Compact Floating HUD & Snippets Library:** Pin Always-on-Top, shrink into a floating mini telemetry pill (`WPM`, `ETA`, progress bar, controls), and save/search reusable text snippets locally.
 
 ---
 
-## Pipeline Architecture
+## Architecture
 
 ```text
-CustomTkinter UI (Staged Text)
- └── Data Flow Event
-      └── Daemon Worker Thread (Sanitization & Timing)
-           └── OS-Level Keystroke Injection
-                └── Target Web Browser / Application
+                ┌─────────────────────────────────────────────┐
+                │   Unified React + TypeScript + Vite UI      │
+                │    (frontend/ — Studio, HUD, Overview)      │
+                └──────────────────────┬──────────────────────┘
+                                       │ EngineAdapter
+                 ┌─────────────────────┴─────────────────────┐
+                 ▼ (Vercel Web Mode)                         ▼ (Desktop Mode)
+   ┌───────────────────────────┐               ┌───────────────────────────────┐
+   │     WebSandboxAdapter     │               │     DesktopBridgeAdapter      │
+   │ • In-browser cadence sim  │               │ • PyWebView JS <-> Python IPC │
+   │ • Paste-blocked test box  │               └───────────────┬───────────────┘
+   │ • localStorage snippets   │                               ▼
+   └───────────────────────────┘               ┌───────────────────────────────┐
+                                               │       Python Engine v2        │
+                                               │ • FSM + Sanitizer + Cadence   │
+                                               │ • Win32 ctypes Focus Guard    │
+                                               │ • pynput Global Hotkeys       │
+                                               │ • %APPDATA% JSON Storage      │
+                                               └───────────────┬───────────────┘
+                                                               ▼
+                                               Target OS Application / Browser
 ```
 
+### Engineering & Governance Docs
+- [architecture.md](architecture.md) — System design, FSM invariants, IPC bridge & packaging pipeline
+- [rule.md](rule.md) — Engineering guardrails, safety invariants & frontend contract
+- [phase-doc.md](phase-doc.md) — Phased implementation roadmap & exit gates
+- [design.md](design.md) — Visual design system, UX views & telemetry specs
+- [memory.md](memory.md) — Architectural Decision Records (ADRs) & project memory
+
 ---
 
-## Prerequisites
+## Prerequisites (For Local Development)
 
-- **Python:** 3.10+
-- **OS:** Windows OS
+- **Windows 10 / 11** (Edge WebView2 Runtime is built-in)
+- **Python 3.10+**
+- **Node.js 20+**
+- **Inno Setup 6** *(only required to compile the `.exe` setup wizard)*
 
 ---
 
-## Installation & Setup
+## Local Development Setup
 
-Use the following standard bash commands to set up the project:
-
-```bash
-# Create a virtual environment
+### 1. Python Backend & Automated Tests (PowerShell)
+```powershell
 python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt pytest
+pytest
+```
 
-# Activate the virtual environment (Git Bash / PowerShell on Windows)
-source venv/Scripts/activate
+### 2. Frontend Web Sandbox (Vite Dev Server)
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-# Install required packages
-pip install customtkinter pynput
+### 3. Desktop App (PyWebView + Python Engine v2)
+```powershell
+# Build the desktop-mode frontend bundle once
+cd frontend
+npm run build:desktop
+cd ..
+
+# Launch the native Windows desktop application
+python -m backend.desktop_app
 ```
 
 ---
 
-## Usage
+## Deploying Web Mode to Vercel
 
-1. **Run the application:** Launch the user interface by executing `python main.py`.
-2. **Stage the text:** Paste the content you wish to type directly into the TypeSimulator UI.
-3. **Set target window focus:** Switch to your desired application or web browser and click inside the target input field so it has focus.
-4. **Execute the F9 trigger:** Press `F9` on your keyboard to begin the humanized typing process. You can press `ESC` at any time to instantly abort the sequence.
+The root `vercel.json` is pre-configured for zero-friction Vercel deployment:
+1. Push this repository to GitHub and import it into **Vercel**.
+2. Keep the root directory as `.` (`vercel.json` runs `cd frontend && npm run build:web` and outputs `frontend/dist`).
+3. *(Optional)* Set `VITE_DOWNLOAD_URL` in Vercel Environment Variables to point directly to your latest GitHub Releases `.exe` asset URL.
+
+---
+
+## Building the Standalone Windows Installer (`.exe`)
+
+Run the automated PowerShell packaging pipeline from the project root:
+
+```powershell
+.\installer\build.ps1
+```
+
+This builds `frontend` in Desktop mode, generates `installer/assets/icon.ico`, bundles the application via PyInstaller (`installer/typesimulator.spec`), and compiles a standalone Inno Setup installer at:
+
+```text
+installer/output/TypeSimulator-Setup-v2.0.0.exe
+```
 
 ---
 
