@@ -100,10 +100,10 @@ python -m backend.desktop_app
 
 ## Deploying Web Mode to Vercel
 
-The root `vercel.json` is pre-configured for zero-friction Vercel deployment:
-1. Push this repository to GitHub and import it into **Vercel**.
-2. Keep the root directory as `.` (`vercel.json` runs `cd frontend && npm run build:web` and outputs `frontend/dist`).
-3. *(Optional)* Set `VITE_DOWNLOAD_URL` in Vercel Environment Variables to point directly to your latest GitHub Releases `.exe` asset URL.
+The `frontend/vercel.json` configuration is pre-configured for zero-friction Vercel deployment:
+1. Import `kamal-hq/TypeSimulator` in **Vercel** and select **Import single project → `frontend` (Vite)** (sets Root Directory to `frontend`).
+2. `frontend/vercel.json` automatically runs `npm install` → `npm run build:web` and publishes `dist/`.
+3. *(Optional)* Set `VITE_DOWNLOAD_URL` in Vercel Environment Variables if you ever want to override the default GitHub Releases `.exe` asset link.
 
 ---
 
