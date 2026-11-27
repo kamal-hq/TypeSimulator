@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "typesimulator"
-version = "2.0.0"
+version = "2.0.1"
 description = "OS-level humanized keystroke automation studio for Windows with PyWebView desktop UI and Vercel web sandbox."
 readme = "README.md"
 requires-python = ">=3.10"

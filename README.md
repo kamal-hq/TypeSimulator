@@ -118,19 +118,19 @@ Run the automated PowerShell packaging pipeline from the project root:
 This builds `frontend` in Desktop mode, generates `installer/assets/icon.ico`, bundles the application via PyInstaller (`installer/typesimulator.spec`), and compiles a standalone Inno Setup installer at:
 
 ```text
-installer/output/TypeSimulator-Setup-v2.0.0.exe
+installer/output/TypeSimulator-Setup-v2.0.1.exe
 ```
 
 ---
 
 ## Windows SmartScreen, Antivirus & Checksum Verification
 
-Because `TypeSimulator-Setup-v2.0.0.exe` is currently an **unsigned** independent open-source binary that registers global hotkeys and injects OS-level keystrokes (`SendInput`), Windows SmartScreen ("Windows protected your PC") or antivirus heuristics may display a warning on first run.
+Because `TypeSimulator-Setup-v2.0.1.exe` is currently an **unsigned** independent open-source binary that registers global hotkeys and injects OS-level keystrokes (`SendInput`), Windows SmartScreen ("Windows protected your PC") or antivirus heuristics may display a warning on first run.
 
 Before running a downloaded release binary, verify its integrity against the SHA-256 hash published on the GitHub Release page using PowerShell:
 
 ```powershell
-Get-FileHash .\TypeSimulator-Setup-v2.0.0.exe -Algorithm SHA256
+Get-FileHash .\TypeSimulator-Setup-v2.0.1.exe -Algorithm SHA256
 ```
 
 Compare the output hash with the checksum listed in the corresponding GitHub Release notes, or inspect the source code and build the installer locally with `.\installer\build.ps1`.

@@ -1,5 +1,5 @@
 const DEFAULT_DOWNLOAD_URL =
-  'https://github.com/kamal-hq/TypeSimulator/releases/latest/download/TypeSimulator-Setup-v2.0.0.exe'
+  'https://github.com/kamal-hq/TypeSimulator/releases/latest/download/TypeSimulator-Setup-v2.0.1.exe'
 
 const DEFAULT_GITHUB_URL = 'https://github.com/kamal-hq/TypeSimulator'
 

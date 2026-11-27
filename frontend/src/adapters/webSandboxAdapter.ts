@@ -94,7 +94,7 @@ export class WebSandboxAdapter implements EngineAdapter {
     return {
       mode: this.mode,
       label: this.mode === 'desktop' ? 'Desktop OS Engine' : 'Web Sandbox',
-      version: '2.0.0',
+      version: '2.0.1',
       platform: 'browser',
       isElevated: false,
     }

@@ -2,7 +2,7 @@
 ; Compiles dist/TypeSimulator/ into installer/output/TypeSimulator-Setup-v2.0.0.exe
 
 #define MyAppName "TypeSimulator"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.1"
 #define MyAppPublisher "Muhammad Kamal"
 #define MyAppURL "https://github.com/kamal-hq/TypeSimulator"
 #define MyAppExeName "TypeSimulator.exe"

@@ -59,7 +59,7 @@ if (-not $Iscc) {
 
 Invoke-Checked { & $Iscc $IssFile } "Inno Setup ISCC"
 
-$InstallerOut = Join-Path $PSScriptRoot "output\TypeSimulator-Setup-v2.0.0.exe"
+$InstallerOut = Join-Path $PSScriptRoot "output\TypeSimulator-Setup-v2.0.1.exe"
 if (Test-Path $InstallerOut) {
     $SizeMB = [Math]::Round((Get-Item $InstallerOut).Length / 1MB, 2)
     Write-Host "`nSUCCESS: Built $InstallerOut ($SizeMB MB)" -ForegroundColor Green

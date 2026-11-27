@@ -9,7 +9,7 @@ export function Logo() {
         T<span className="text-[#FF2E93]">S</span>
       </div>
       <span className="font-semibold tracking-tight text-white">TypeSimulator</span>
-      <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">v2.0</span>
+      <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">v2.0.1</span>
     </div>
   )
 }
