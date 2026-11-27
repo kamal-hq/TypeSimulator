@@ -18,8 +18,10 @@ from backend.bridge import (
 from backend.desktop_app import (
     DESKTOP_CSP_REPORT_ONLY,
     LocalStaticServer,
+    apply_windows_dark_chrome,
     is_allowed_app_navigation,
     is_debug_enabled,
+    resolve_icon_path,
     validate_dev_url,
 )
 from backend.storage import (
@@ -236,3 +238,11 @@ def test_keystroke_privacy_pynput_discards_non_hotkey_characters(caplog):
     listener._on_release(f9, injected=False)
     assert triggered == ["start"]
     assert all(len(hk._state) == 0 for hk in listener._hotkeys)
+
+
+def test_windows_dark_chrome_safe_noop_on_missing_handle_and_icon_resolves():
+    assert apply_windows_dark_chrome(object()) is False
+    fake_win = type("Win", (), {"native": type("Native", (), {"Handle": 0})()})()
+    assert apply_windows_dark_chrome(fake_win) is False
+    icon = resolve_icon_path()
+    assert icon is not None and icon.endswith("icon.ico")

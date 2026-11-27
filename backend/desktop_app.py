@@ -1,7 +1,8 @@
-"""Standalone PyWebView desktop entry point for TypeSimulator v2 with origin isolation & CSP."""
+"""Standalone PyWebView desktop entry point for TypeSimulator v2 with dark chrome, origin isolation & CSP."""
 
 from __future__ import annotations
 
+import ctypes
 import mimetypes
 import os
 import sys
@@ -31,6 +32,55 @@ DESKTOP_CSP_REPORT_ONLY = (
 
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost"})
 
+# Windows DWM attributes for native dark titlebar, caption color, border, and rounded corners
+_DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+_DWMWA_WINDOW_CORNER_PREFERENCE = 33
+_DWMWA_BORDER_COLOR = 34
+_DWMWA_CAPTION_COLOR = 35
+_DWMWCP_ROUND = 2
+
+
+def apply_windows_dark_chrome(
+    window: Any,
+    caption_bgr: int = 0x000B0B0B,
+    border_bgr: int = 0x00242424,
+) -> bool:
+    """Force native Windows 10/11 dark title bar & matching caption/border even in Windows Light Mode."""
+    if sys.platform != "win32":
+        return False
+    native = getattr(window, "native", None)
+    if native is None:
+        return False
+    handle_obj = getattr(native, "Handle", None)
+    if handle_obj is None:
+        return False
+
+    try:
+        hwnd = int(handle_obj.ToInt32()) if hasattr(handle_obj, "ToInt32") else int(handle_obj)
+    except Exception:
+        return False
+    if hwnd == 0:
+        return False
+
+    try:
+        dwmapi = ctypes.windll.dwmapi
+        for attr, val in (
+            (_DWMWA_USE_IMMERSIVE_DARK_MODE, 1),
+            (_DWMWA_WINDOW_CORNER_PREFERENCE, _DWMWCP_ROUND),
+            (_DWMWA_CAPTION_COLOR, caption_bgr),
+            (_DWMWA_BORDER_COLOR, border_bgr),
+        ):
+            c_val = ctypes.c_int(val)
+            dwmapi.DwmSetWindowAttribute(
+                ctypes.c_void_p(hwnd),
+                ctypes.c_uint(attr),
+                ctypes.byref(c_val),
+                ctypes.sizeof(c_val),
+            )
+        return True
+    except Exception:
+        return False
+
 
 def validate_dev_url(raw_url: Optional[str], is_frozen: bool) -> Optional[str]:
     """Allow TYPESIM_DEV_URL only during non-frozen development and strictly on localhost/127.0.0.1."""
@@ -47,7 +97,6 @@ def validate_dev_url(raw_url: Optional[str], is_frozen: bool) -> Optional[str]:
         raise ValueError("TYPESIM_DEV_URL must not contain credentials.")
     if (parsed.hostname or "").lower() not in _LOOPBACK_HOSTS:
         raise ValueError("TYPESIM_DEV_URL is restricted strictly to localhost or 127.0.0.1.")
-    # Accessing parsed.port validates integer range 0..65535
     _ = parsed.port
     return cleaned
 
@@ -77,19 +126,25 @@ def is_allowed_app_navigation(uri: str, allowed_origin: str) -> bool:
     return extract_origin(raw) == allowed_origin.lower()
 
 
-def resolve_frontend_dist_dir() -> Path:
+def _runtime_base_dir() -> Path:
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        base_dir = Path(sys._MEIPASS)  # type: ignore[attr-defined]
-    else:
-        base_dir = Path(__file__).resolve().parent.parent
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    return Path(__file__).resolve().parent.parent
 
-    dist_dir = (base_dir / "frontend" / "dist").resolve()
+
+def resolve_frontend_dist_dir() -> Path:
+    dist_dir = (_runtime_base_dir() / "frontend" / "dist").resolve()
     if not (dist_dir / "index.html").exists():
         raise FileNotFoundError(
             f"Frontend bundle not found at {dist_dir / 'index.html'}. "
             "Run 'npm run build:desktop' inside frontend/ first."
         )
     return dist_dir
+
+
+def resolve_icon_path() -> Optional[str]:
+    icon = (_runtime_base_dir() / "installer" / "assets" / "icon.ico").resolve()
+    return str(icon) if icon.is_file() else None
 
 
 class LocalStaticServer:
@@ -131,7 +186,6 @@ class LocalStaticServer:
 
         class _StaticHandler(BaseHTTPRequestHandler):
             def log_message(self, format: str, *args: Any) -> None:
-                # Never log requests or paths to stdout/stderr
                 return
 
             def _send_security_headers(self) -> None:
@@ -152,7 +206,6 @@ class LocalStaticServer:
                 else:
                     rel_path = req_path.lstrip("/")
 
-                # Strictly reject path traversal attempts outside frontend/dist
                 if ".." in Path(rel_path).parts or "\\" in rel_path:
                     self.send_response(HTTPStatus.FORBIDDEN)
                     self._send_security_headers()
@@ -237,7 +290,6 @@ def main() -> None:
     dev_url = validate_dev_url(os.environ.get("TYPESIM_DEV_URL"), is_frozen=is_frozen)
     debug_mode = is_debug_enabled(is_frozen=is_frozen)
 
-    # Harden PyWebView global settings: never auto-open arbitrary external links or allow file:// / downloads
     webview.settings["ALLOW_FILE_URLS"] = False
     webview.settings["ALLOW_DOWNLOADS"] = False
     webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = False
@@ -254,7 +306,7 @@ def main() -> None:
     bridge = DesktopBridge()
 
     window = webview.create_window(
-        title="TypeSimulator v2 — Humanized Keystroke Studio",
+        title="TypeSimulator",
         url=url,
         js_api=bridge,
         width=STUDIO_SIZE[0],
@@ -273,9 +325,14 @@ def main() -> None:
             guard_installed = True
 
     def _on_before_show() -> None:
+        apply_windows_dark_chrome(window)
         _ensure_guard()
 
+    def _on_shown() -> None:
+        apply_windows_dark_chrome(window)
+
     def _on_loaded() -> None:
+        apply_windows_dark_chrome(window)
         _ensure_guard()
         bridge.attach_window(window)
 
@@ -285,10 +342,15 @@ def main() -> None:
             static_server.stop()
 
     window.events.before_show += _on_before_show
+    window.events.shown += _on_shown
     window.events.loaded += _on_loaded
     window.events.closed += _on_closed
 
-    webview.start(debug=debug_mode, gui="edgechromium" if sys.platform == "win32" else None)
+    webview.start(
+        debug=debug_mode,
+        gui="edgechromium" if sys.platform == "win32" else None,
+        icon=resolve_icon_path(),
+    )
 
 
 if __name__ == "__main__":

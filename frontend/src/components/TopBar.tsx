@@ -51,7 +51,11 @@ export function TopBar({
   onOverview: () => void
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/8 bg-[#0B0B0B]/90 px-4 backdrop-blur-xl md:px-6">
+    <header
+      className={`sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-white/8 bg-[#0B0B0B]/95 px-4 backdrop-blur-xl md:px-6 ${
+        runtime.mode === 'desktop' ? 'h-14' : 'h-16'
+      }`}
+    >
       <div className="flex items-center gap-4">
         <Logo />
         <span

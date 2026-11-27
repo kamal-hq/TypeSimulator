@@ -18,8 +18,8 @@ from backend.models import EngineSnapshot, TypingConfig
 from backend.sanitizer import sanitize_text
 from backend.storage import LocalStorage
 
-STUDIO_SIZE = (1220, 800)
-HUD_SIZE = (580, 96)
+STUDIO_SIZE = (1280, 820)
+HUD_SIZE = (600, 100)
 MAX_PAYLOAD_CHARS = 100_000
 
 _ALLOWED_GITHUB_REPO_PATH = "/kamal-hq/typesimulator"
@@ -243,13 +243,17 @@ class DesktopBridge:
         want_hud = bool(enabled)
         if self._window is not None and want_hud != self._is_compact_hud:
             try:
+                from backend.desktop_app import apply_windows_dark_chrome
+
                 if want_hud:
                     self._pre_hud_on_top = self._always_on_top
                     self._window.resize(*HUD_SIZE)
                     self._window.on_top = True
+                    apply_windows_dark_chrome(self._window, caption_bgr=0x00151515)
                 else:
                     self._window.resize(*STUDIO_SIZE)
                     self._window.on_top = self._pre_hud_on_top
+                    apply_windows_dark_chrome(self._window, caption_bgr=0x000B0B0B)
             except Exception:
                 pass
         self._is_compact_hud = want_hud

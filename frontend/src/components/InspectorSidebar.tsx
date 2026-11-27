@@ -74,6 +74,7 @@ function formatKeyEvent(event: KeyboardEvent): string | null {
 }
 
 export function InspectorSidebar({
+  docked = false,
   config,
   runtime,
   targetWindowTitle,
@@ -88,6 +89,7 @@ export function InspectorSidebar({
   onClearAllData,
   onLegal,
 }: {
+  docked?: boolean
   config: TypingConfig
   runtime: RuntimeInfo
   targetWindowTitle?: string
@@ -160,8 +162,14 @@ export function InspectorSidebar({
   }
 
   return (
-    <aside className="h-fit overflow-hidden rounded-2xl border border-white/8 bg-[#111] xl:sticky xl:top-20">
-      <div className="grid grid-cols-3 border-b border-white/8 p-1.5">
+    <aside
+      className={
+        docked
+          ? 'flex flex-col border-t border-white/8 bg-[#0E0E0E] lg:min-h-0 lg:border-l lg:border-t-0'
+          : 'h-fit overflow-hidden rounded-2xl border border-white/8 bg-[#111] lg:sticky lg:top-20'
+      }
+    >
+      <div className="grid shrink-0 grid-cols-3 border-b border-white/8 p-1.5">
         {([
           ['cadence', Gauge],
           ['safety', Shield],
@@ -180,7 +188,13 @@ export function InspectorSidebar({
         ))}
       </div>
 
-      <div className="max-h-[calc(100vh-105px)] space-y-6 overflow-y-auto p-4">
+      <div
+        className={
+          docked
+            ? 'flex-1 space-y-6 overflow-y-auto p-4'
+            : 'max-h-[calc(100vh-105px)] space-y-6 overflow-y-auto p-4'
+        }
+      >
         {tab === 'cadence' && (
           <>
             <div>
