@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { hasNativePyWebView, isDesktopBuildOrHost } from './adapters/engineAdapter'
 import { OverviewPage } from './components/OverviewPage'
 import { StudioWorkspace } from './components/StudioWorkspace'
+import { openExternalUrlSafe } from './config/links'
 
 export default function App() {
   const [nativeReady, setNativeReady] = useState<boolean>(() => hasNativePyWebView())
@@ -18,6 +19,27 @@ export default function App() {
     if (hasNativePyWebView()) onPyWebViewReady()
     return () => window.removeEventListener('pywebviewready', onPyWebViewReady)
   }, [])
+
+  // Defense-in-depth: intercept off-origin anchor clicks in Desktop Mode so WebView never leaves app origin
+  useEffect(() => {
+    if (!nativeReady && mode !== 'desktop') return
+    const onDocumentClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target.closest('a[href]') : null
+      if (!target) return
+      const href = target.getAttribute('href') || ''
+      if (!href || href.startsWith('#')) return
+      const isExternal =
+        href.startsWith('http://') ||
+        href.startsWith('https://') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('javascript:')
+      if (!isExternal) return
+      event.preventDefault()
+      openExternalUrlSafe(href)
+    }
+    document.addEventListener('click', onDocumentClick, true)
+    return () => document.removeEventListener('click', onDocumentClick, true)
+  }, [mode, nativeReady])
 
   return (
     <>

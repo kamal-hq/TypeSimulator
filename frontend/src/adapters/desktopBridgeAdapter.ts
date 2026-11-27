@@ -1,7 +1,8 @@
-import type { ConfigUpdateResult, EngineAdapter } from './engineAdapter'
+import { MAX_PAYLOAD_CHARS, type ConfigUpdateResult, type EngineAdapter } from './engineAdapter'
 import { defaultConfig, sanitizeLocally } from './sanitizeLocal'
+import { isAllowedDesktopExternalUrl } from '../config/links'
 import type { EngineSnapshot, RuntimeInfo, SanitizeResult, Snippet, TypingConfig } from '../types/engine'
-import type { PyWebViewApi } from '../vite-env'
+import type { ClearDataResult, PyWebViewApi } from '../vite-env'
 
 export class DesktopBridgeAdapter implements EngineAdapter {
   private listeners = new Set<(snapshot: EngineSnapshot) => void>()
@@ -64,16 +65,18 @@ export class DesktopBridgeAdapter implements EngineAdapter {
   }
 
   sanitize(text: string, config = this.config): SanitizeResult {
-    // Synchronous mirror of backend/sanitizer.py for zero-latency UI badge updates
-    return sanitizeLocally(text, config)
+    return sanitizeLocally(text.slice(0, MAX_PAYLOAD_CHARS), config)
   }
 
   setStagedText(text: string): void {
-    void this.api?.set_staged_text(text)
+    void this.api?.set_staged_text(text.slice(0, MAX_PAYLOAD_CHARS)).catch(() => {})
   }
 
   start(text: string): void {
-    void this.api?.start(text).then((snap) => this.handleSnapshot(snap))
+    void this.api
+      ?.start(text)
+      .then((snap) => this.handleSnapshot(snap))
+      .catch((err: unknown) => this.emitError(err))
   }
 
   pause(reason?: string): void {
@@ -116,6 +119,26 @@ export class DesktopBridgeAdapter implements EngineAdapter {
     await this.api?.delete_snippet(id)
   }
 
+  async clearAllData(): Promise<ClearDataResult> {
+    if (!this.api) {
+      return {
+        config: { ...defaultConfig, hotkeys: { ...defaultConfig.hotkeys } },
+        snippets: [],
+        snapshot: this.snapshot,
+        hotkeyError: null,
+      }
+    }
+    const res = await this.api.clear_all_data()
+    this.config = res.config
+    this.handleSnapshot(res.snapshot)
+    return res
+  }
+
+  async openExternalUrl(url: string): Promise<void> {
+    if (!isAllowedDesktopExternalUrl(url)) return
+    await this.api?.open_external_url(url)
+  }
+
   async setAlwaysOnTop(value: boolean): Promise<void> {
     await this.api?.set_always_on_top(value)
   }
@@ -143,5 +166,11 @@ export class DesktopBridgeAdapter implements EngineAdapter {
     if (!snap) return
     this.snapshot = snap
     this.listeners.forEach((listener) => listener(snap))
+  }
+
+  private emitError(err: unknown) {
+    const message = err instanceof Error ? err.message : 'Action rejected by engine.'
+    this.snapshot = { ...this.snapshot, errorMessage: message }
+    this.listeners.forEach((listener) => listener(this.snapshot))
   }
 }

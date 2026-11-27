@@ -88,7 +88,7 @@ export function TopBar({
             <a
               href={RELEASE_DOWNLOAD_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="hidden items-center gap-2 rounded-lg bg-[#C9EF35] px-3 py-2 text-xs font-bold text-black hover:bg-[#d8fa55] sm:flex"
             >
               <Download size={14} />Download .exe

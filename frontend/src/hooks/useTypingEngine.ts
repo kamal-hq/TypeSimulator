@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DesktopBridgeAdapter } from '../adapters/desktopBridgeAdapter'
-import { hasNativePyWebView, type EngineAdapter } from '../adapters/engineAdapter'
+import { hasNativePyWebView, MAX_PAYLOAD_CHARS, type EngineAdapter } from '../adapters/engineAdapter'
 import { defaultConfig } from '../adapters/sanitizeLocal'
 import { WebSandboxAdapter } from '../adapters/webSandboxAdapter'
 import type { EngineSnapshot, RuntimeInfo, Snippet, TypingConfig } from '../types/engine'
@@ -43,6 +43,7 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(initialSnapshot)
   const [config, setConfig] = useState<TypingConfig>(defaultConfig)
   const [hotkeyError, setHotkeyError] = useState<string | null>(null)
+  const [storageError, setStorageError] = useState<string | null>(null)
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false)
   const [payload, setPayloadState] = useState(
     'Hello from TypeSimulator — “precision should still feel human.”\n\nThis text is sanitized, staged, and ready to travel where paste cannot.',
@@ -64,7 +65,6 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     }
   }, [adapter])
 
-  // Sync staged text to Python Desktop backend so global F9 hotkey always has fresh text
   useEffect(() => {
     const handle = window.setTimeout(() => {
       adapter.setStagedText(payload)
@@ -72,7 +72,6 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     return () => window.clearTimeout(handle)
   }, [adapter, payload])
 
-  // Honor clearOnComplete ONLY when transitioning cleanly to COMPLETED
   useEffect(() => {
     if (prevStateRef.current !== 'COMPLETED' && snapshot.state === 'COMPLETED' && config.clearOnComplete) {
       setPayloadState('')
@@ -80,7 +79,9 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     prevStateRef.current = snapshot.state
   }, [snapshot.state, config.clearOnComplete])
 
-  const setPayload = useCallback((text: string) => setPayloadState(text), [])
+  const setPayload = useCallback((text: string) => {
+    setPayloadState(text.slice(0, MAX_PAYLOAD_CHARS))
+  }, [])
 
   const updateConfig = useCallback(
     (patch: Partial<TypingConfig>) => {
@@ -99,8 +100,13 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
 
   const saveSnippet = useCallback(
     async (title: string, tags: string[]) => {
-      const saved = await adapter.saveSnippet({ title, tags, text: payload })
-      setSnippets((prev) => [saved, ...prev])
+      try {
+        setStorageError(null)
+        const saved = await adapter.saveSnippet({ title, tags, text: payload })
+        setSnippets((prev) => [saved, ...prev])
+      } catch (err) {
+        setStorageError(err instanceof Error ? err.message : 'Unable to save snippet.')
+      }
     },
     [adapter, payload],
   )
@@ -113,7 +119,15 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     [adapter],
   )
 
-  // In-window keyboard shortcuts (Web mode; Desktop mode uses OS-level pynput global hotkeys)
+  const clearAllData = useCallback(async () => {
+    const cleared = await adapter.clearAllData()
+    setConfig(cleared.config)
+    setSnippets(cleared.snippets)
+    setPayloadState('')
+    setHotkeyError(cleared.hotkeyError ?? null)
+    setStorageError(null)
+  }, [adapter])
+
   useEffect(() => {
     if (runtime.mode === 'desktop' && hasNativePyWebView()) return
     const onKey = (event: KeyboardEvent) => {
@@ -142,6 +156,7 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     snapshot,
     config,
     hotkeyError,
+    storageError,
     isRecordingHotkey,
     setIsRecordingHotkey,
     payload,
@@ -151,6 +166,7 @@ export function useTypingEngine(mode: 'web' | 'desktop', nativeReady: boolean) {
     snippets,
     saveSnippet,
     deleteSnippet,
+    clearAllData,
     start: () => adapter.start(payload),
     pause: (reason?: string) => adapter.pause(reason),
     resume: () => adapter.resume(),
