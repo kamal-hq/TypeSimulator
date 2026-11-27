@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import posixpath
 import sys
 import threading
-from typing import Any, Optional
+import webbrowser
+from typing import Any, Callable, Optional
+from urllib.parse import urlsplit
 
 from backend import __version__
 from backend.engine import TypingEngine
@@ -17,6 +20,50 @@ from backend.storage import LocalStorage
 
 STUDIO_SIZE = (1220, 800)
 HUD_SIZE = (580, 96)
+MAX_PAYLOAD_CHARS = 100_000
+
+_ALLOWED_GITHUB_REPO_PATH = "/kamal-hq/typesimulator"
+_ALLOWED_MAILTO = "mailto:muhammad.kamal.hq@gmail.com"
+
+
+def is_allowed_external_url(url: str) -> bool:
+    """Strictly allowlist external URLs that Desktop Mode may open in the OS browser."""
+    raw = (url or "").strip()
+    if not raw or len(raw) > 512:
+        return False
+
+    if raw.lower() == _ALLOWED_MAILTO:
+        return True
+
+    parsed = urlsplit(raw)
+    if parsed.scheme != "https":
+        return False
+    if parsed.username is not None or parsed.password is not None:
+        return False
+    if (parsed.hostname or "").lower() != "github.com":
+        return False
+    if parsed.port not in (None, 443):
+        return False
+
+    norm_path = posixpath.normpath(parsed.path or "/")
+    lower_path = norm_path.lower()
+    return lower_path == _ALLOWED_GITHUB_REPO_PATH or lower_path.startswith(_ALLOWED_GITHUB_REPO_PATH + "/")
+
+
+def serialize_snapshot_for_js(snapshot_dict: dict[str, Any]) -> str:
+    """Serialize snapshot as pure ASCII JSON safe for interpolation inside evaluate_js."""
+    return (
+        json.dumps(snapshot_dict, ensure_ascii=True)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+
+
+def _validate_payload(text: Any) -> str:
+    value = str(text or "")
+    if len(value) > MAX_PAYLOAD_CHARS:
+        raise ValueError(f"Payload exceeds maximum limit of {MAX_PAYLOAD_CHARS:,} characters.")
+    return value
 
 
 class DesktopBridge:
@@ -26,9 +73,11 @@ class DesktopBridge:
         self,
         storage: Optional[LocalStorage] = None,
         window_monitor: Optional[Win32WindowMonitor] = None,
+        url_opener: Callable[[str], Any] = lambda target: webbrowser.open(target, new=2),
     ) -> None:
         self._storage = storage or LocalStorage()
         self._window_monitor = window_monitor or Win32WindowMonitor()
+        self._url_opener = url_opener
         saved_config = self._storage.load_config()
         self._engine = TypingEngine(
             window_monitor=self._window_monitor,
@@ -77,7 +126,7 @@ class DesktopBridge:
         window = self._window
         if window is None:
             return
-        payload = json.dumps(snapshot.to_dict(), ensure_ascii=False)
+        payload = serialize_snapshot_for_js(snapshot.to_dict())
         try:
             window.evaluate_js(
                 f"window.__typeSimulatorOnEvent && window.__typeSimulatorOnEvent({payload});"
@@ -112,17 +161,20 @@ class DesktopBridge:
         return {"config": updated.to_dict(), "hotkeyError": hotkey_error}
 
     def set_staged_text(self, text: str) -> None:
+        validated = _validate_payload(text)
         with self._text_lock:
-            self._staged_text = str(text or "")
+            self._staged_text = validated
 
     def sanitize(self, text: str, config_dict: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        validated = _validate_payload(text)
         cfg = TypingConfig.from_dict(config_dict) if config_dict else self._engine.config
-        return sanitize_text(str(text or ""), cfg).to_dict()
+        return sanitize_text(validated, cfg).to_dict()
 
     def start(self, text: str) -> dict[str, Any]:
+        validated = _validate_payload(text)
         with self._text_lock:
-            self._staged_text = str(text or "")
-        return self._engine.start(self._staged_text).to_dict()
+            self._staged_text = validated
+        return self._engine.start(validated).to_dict()
 
     def pause(self, reason: Optional[str] = None) -> dict[str, Any]:
         return self._engine.pause(reason or "Paused manually").to_dict()
@@ -139,7 +191,7 @@ class DesktopBridge:
     def get_snapshot(self) -> dict[str, Any]:
         return self._engine.get_snapshot().to_dict()
 
-    # --- Snippets ---
+    # --- Snippets & Local Data Deletion ---
 
     def list_snippets(self) -> list[dict[str, Any]]:
         return [s.to_dict() for s in self._storage.list_snippets()]
@@ -150,6 +202,31 @@ class DesktopBridge:
 
     def delete_snippet(self, snippet_id: str) -> None:
         self._storage.delete_snippet(str(snippet_id))
+
+    def clear_all_data(self) -> dict[str, Any]:
+        """Delete all local persisted data and reset in-memory engine state and defaults."""
+        snap = self._engine.reset()
+        default_cfg = TypingConfig()
+        updated = self._engine.update_config(default_cfg.to_dict())
+        with self._text_lock:
+            self._staged_text = ""
+        self._storage.clear_all_data()
+        hotkey_error = self._hotkeys.rebind(updated.hotkeys)
+        return {
+            "config": updated.to_dict(),
+            "snippets": [],
+            "snapshot": snap.to_dict(),
+            "hotkeyError": hotkey_error,
+        }
+
+    # --- Safe External Browser Navigation ---
+
+    def open_external_url(self, url: str) -> bool:
+        """Open only allowlisted external URLs in the user's default browser."""
+        if not is_allowed_external_url(url):
+            raise ValueError("Blocked external URL outside allowlist.")
+        self._url_opener(url.strip())
+        return True
 
     # --- Native Window Controls ---
 

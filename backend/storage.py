@@ -11,6 +11,12 @@ from typing import Optional
 
 from backend.models import Snippet, TypingConfig
 
+MAX_SNIPPETS = 200
+MAX_SNIPPET_TITLE_CHARS = 120
+MAX_SNIPPET_TEXT_CHARS = 50_000
+MAX_SNIPPET_TAGS = 10
+MAX_TAG_CHARS = 32
+
 
 def default_data_dir() -> Path:
     appdata = os.environ.get("APPDATA")
@@ -47,7 +53,7 @@ def _seed_snippets() -> list[Snippet]:
 
 
 class LocalStorage:
-    """Atomic JSON persistence for TypingConfig and Snippets."""
+    """Atomic JSON persistence for TypingConfig and Snippets with strict size/count bounds."""
 
     def __init__(self, data_dir: Optional[Path] = None) -> None:
         self._dir = Path(data_dir) if data_dir is not None else default_data_dir()
@@ -88,17 +94,36 @@ class LocalStorage:
             raw = json.loads(self._snippets_path.read_text(encoding="utf-8"))
             if not isinstance(raw, list):
                 return []
-            return [Snippet.from_dict(item) for item in raw if isinstance(item, dict)]
+            return [Snippet.from_dict(item) for item in raw if isinstance(item, dict)][:MAX_SNIPPETS]
         except Exception:
             return []
 
     def save_snippet(self, title: str, text: str, tags: list[str]) -> Snippet:
+        if not isinstance(text, str):
+            raise ValueError("Snippet text must be a string.")
+        if len(text) > MAX_SNIPPET_TEXT_CHARS:
+            raise ValueError(f"Snippet text exceeds maximum limit of {MAX_SNIPPET_TEXT_CHARS:,} characters.")
+
         snippets = self.list_snippets()
+        if len(snippets) >= MAX_SNIPPETS:
+            raise ValueError(f"Snippet limit reached ({MAX_SNIPPETS} max). Delete an existing snippet first.")
+
+        clean_title = (str(title or "").strip() or "Untitled Snippet")[:MAX_SNIPPET_TITLE_CHARS]
+        clean_tags: list[str] = []
+        seen: set[str] = set()
+        for raw_tag in tags or []:
+            tag = str(raw_tag).strip()[:MAX_TAG_CHARS]
+            if tag and tag.lower() not in seen:
+                seen.add(tag.lower())
+                clean_tags.append(tag)
+            if len(clean_tags) >= MAX_SNIPPET_TAGS:
+                break
+
         snippet = Snippet(
             id=str(uuid.uuid4()),
-            title=title.strip() or "Untitled Snippet",
+            title=clean_title,
             text=text,
-            tags=[t.strip() for t in tags if t.strip()],
+            tags=clean_tags,
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         updated = [snippet, *snippets]
@@ -108,3 +133,17 @@ class LocalStorage:
     def delete_snippet(self, snippet_id: str) -> None:
         snippets = [s for s in self.list_snippets() if s.id != snippet_id]
         self._write_json_atomic(self._snippets_path, [s.to_dict() for s in snippets])
+
+    def clear_all_data(self) -> None:
+        """Delete all local persisted settings and snippets from disk."""
+        for candidate in (
+            self._config_path,
+            self._config_path.with_suffix(".tmp"),
+            self._snippets_path,
+            self._snippets_path.with_suffix(".tmp"),
+        ):
+            try:
+                if candidate.exists():
+                    candidate.unlink()
+            except OSError:
+                pass
