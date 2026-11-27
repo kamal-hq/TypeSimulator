@@ -12,8 +12,13 @@ env/
 frontend/node_modules/
 frontend/dist/
 *.log
+
+# Environment files (keep .env.example tracked)
 .env
-.env.local
+.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
 
 # PyInstaller & Windows Installer artifacts
 build/

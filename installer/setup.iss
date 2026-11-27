@@ -2,7 +2,7 @@
 ; Compiles dist/TypeSimulator/ into installer/output/TypeSimulator-Setup-v2.0.0.exe
 
 #define MyAppName "TypeSimulator"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.1"
 #define MyAppPublisher "Muhammad Kamal"
 #define MyAppURL "https://github.com/kamal-hq/TypeSimulator"
 #define MyAppExeName "TypeSimulator.exe"
@@ -38,6 +38,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\TypeSimulator\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSES\*"; DestDir: "{app}\LICENSES"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

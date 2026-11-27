@@ -19,6 +19,7 @@ cl_datas, cl_binaries, cl_hidden = collect_all("clr_loader")
 
 datas = [
     (str(FRONTEND_DIST), "frontend/dist"),
+    (str(ICON_PATH), "installer/assets"),
     *wv_datas,
     *pn_datas,
     *cl_datas,

@@ -1,6 +1,17 @@
-import type { ConfigUpdateResult, EngineAdapter } from './engineAdapter'
+import {
+  MAX_PAYLOAD_CHARS,
+  MAX_SNIPPETS,
+  MAX_SNIPPET_TAGS,
+  MAX_SNIPPET_TEXT_CHARS,
+  MAX_SNIPPET_TITLE_CHARS,
+  MAX_TAG_CHARS,
+  type ConfigUpdateResult,
+  type EngineAdapter,
+} from './engineAdapter'
 import { defaultConfig, sanitizeLocally } from './sanitizeLocal'
+import { openExternalUrlSafe } from '../config/links'
 import type { EngineSnapshot, RuntimeInfo, SanitizeResult, Snippet, TypingConfig } from '../types/engine'
+import type { ClearDataResult } from '../vite-env'
 
 const SNIPPETS_KEY = 'typesimulator-snippets-v2'
 const CONFIG_KEY = 'typesimulator-config-v2'
@@ -83,7 +94,7 @@ export class WebSandboxAdapter implements EngineAdapter {
     return {
       mode: this.mode,
       label: this.mode === 'desktop' ? 'Desktop OS Engine' : 'Web Sandbox',
-      version: '2.0.0',
+      version: '2.0.1',
       platform: 'browser',
       isElevated: false,
     }
@@ -98,7 +109,7 @@ export class WebSandboxAdapter implements EngineAdapter {
   }
 
   sanitize(text: string, config = this.config): SanitizeResult {
-    return sanitizeLocally(text, config)
+    return sanitizeLocally(text.slice(0, MAX_PAYLOAD_CHARS), config)
   }
 
   setStagedText(_text: string): void {
@@ -107,6 +118,14 @@ export class WebSandboxAdapter implements EngineAdapter {
 
   start(text: string) {
     if (this.snapshot.state === 'COUNTDOWN' || this.snapshot.state === 'TYPING') return
+    if (text.length > MAX_PAYLOAD_CHARS) {
+      this.snapshot = {
+        ...this.snapshot,
+        errorMessage: `Payload exceeds maximum limit of ${MAX_PAYLOAD_CHARS.toLocaleString()} characters.`,
+      }
+      this.emit()
+      return
+    }
     const sanitized = this.sanitize(text).sanitized
     if (!sanitized) return
 
@@ -125,6 +144,7 @@ export class WebSandboxAdapter implements EngineAdapter {
       countdownRemaining: this.config.countdown,
       typoCorrections: 0,
       pauseReason: undefined,
+      errorMessage: undefined,
       targetWindowTitle: 'Simulated Target Form',
       wpmHistory: [],
     }
@@ -165,7 +185,6 @@ export class WebSandboxAdapter implements EngineAdapter {
 
   private computeDelayMs(char: string): number {
     const wpm = Math.max(25, Math.min(150, this.config.targetWpm))
-    // 1 word = 5 chars => 60,000ms / (wpm * 5) = 12,000 / wpm ms per char
     const baseMs = 12000 / wpm
     const sigma = 0.05 + (Math.max(0, Math.min(100, this.config.variability)) / 100) * 0.4
     const mu = -0.5 * sigma * sigma
@@ -309,6 +328,7 @@ export class WebSandboxAdapter implements EngineAdapter {
       countdownRemaining: 0,
       typoCorrections: 0,
       pauseReason: undefined,
+      errorMessage: undefined,
     }
     this.emit()
   }
@@ -342,7 +362,7 @@ export class WebSandboxAdapter implements EngineAdapter {
   async listSnippets() {
     try {
       const stored = localStorage.getItem(SNIPPETS_KEY)
-      if (stored) return JSON.parse(stored) as Snippet[]
+      if (stored) return (JSON.parse(stored) as Snippet[]).slice(0, MAX_SNIPPETS)
       localStorage.setItem(SNIPPETS_KEY, JSON.stringify(seedSnippets))
     } catch {
       // Ignore storage access failures
@@ -351,12 +371,29 @@ export class WebSandboxAdapter implements EngineAdapter {
   }
 
   async saveSnippet(input: Omit<Snippet, 'id' | 'createdAt'>) {
+    if (input.text.length > MAX_SNIPPET_TEXT_CHARS) {
+      throw new Error(`Snippet text exceeds maximum limit of ${MAX_SNIPPET_TEXT_CHARS.toLocaleString()} characters.`)
+    }
+    const snippets = await this.listSnippets()
+    if (snippets.length >= MAX_SNIPPETS) {
+      throw new Error(`Snippet limit reached (${MAX_SNIPPETS} max). Delete an existing snippet first.`)
+    }
+
+    const cleanTags = Array.from(
+      new Set(
+        input.tags
+          .map((t) => t.trim().slice(0, MAX_TAG_CHARS))
+          .filter(Boolean),
+      ),
+    ).slice(0, MAX_SNIPPET_TAGS)
+
     const snippet: Snippet = {
-      ...input,
+      title: (input.title.trim() || 'Untitled Snippet').slice(0, MAX_SNIPPET_TITLE_CHARS),
+      text: input.text,
+      tags: cleanTags,
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
       createdAt: new Date().toISOString(),
     }
-    const snippets = await this.listSnippets()
     try {
       localStorage.setItem(SNIPPETS_KEY, JSON.stringify([snippet, ...snippets]))
     } catch {
@@ -372,6 +409,27 @@ export class WebSandboxAdapter implements EngineAdapter {
     } catch {
       // Ignore storage failures
     }
+  }
+
+  async clearAllData(): Promise<ClearDataResult> {
+    this.reset()
+    this.config = { ...defaultConfig, hotkeys: { ...defaultConfig.hotkeys } }
+    try {
+      localStorage.removeItem(CONFIG_KEY)
+      localStorage.removeItem(SNIPPETS_KEY)
+    } catch {
+      // Ignore storage failures
+    }
+    return {
+      config: { ...this.config, hotkeys: { ...this.config.hotkeys } },
+      snippets: [],
+      snapshot: { ...this.snapshot },
+      hotkeyError: null,
+    }
+  }
+
+  async openExternalUrl(url: string): Promise<void> {
+    openExternalUrlSafe(url)
   }
 
   async setAlwaysOnTop(_value: boolean) {}

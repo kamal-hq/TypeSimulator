@@ -9,7 +9,7 @@ export function Logo() {
         T<span className="text-[#FF2E93]">S</span>
       </div>
       <span className="font-semibold tracking-tight text-white">TypeSimulator</span>
-      <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">v2.0</span>
+      <span className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">v2.0.1</span>
     </div>
   )
 }
@@ -51,7 +51,11 @@ export function TopBar({
   onOverview: () => void
 }) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/8 bg-[#0B0B0B]/90 px-4 backdrop-blur-xl md:px-6">
+    <header
+      className={`sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-white/8 bg-[#0B0B0B]/95 px-4 backdrop-blur-xl md:px-6 ${
+        runtime.mode === 'desktop' ? 'h-14' : 'h-16'
+      }`}
+    >
       <div className="flex items-center gap-4">
         <Logo />
         <span
@@ -88,7 +92,7 @@ export function TopBar({
             <a
               href={RELEASE_DOWNLOAD_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="hidden items-center gap-2 rounded-lg bg-[#C9EF35] px-3 py-2 text-xs font-bold text-black hover:bg-[#d8fa55] sm:flex"
             >
               <Download size={14} />Download .exe

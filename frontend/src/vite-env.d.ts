@@ -12,6 +12,13 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+export interface ClearDataResult {
+  config: TypingConfig
+  snippets: Snippet[]
+  snapshot: EngineSnapshot
+  hotkeyError?: string | null
+}
+
 export interface PyWebViewApi {
   get_runtime_info(): Promise<RuntimeInfo>
   get_config(): Promise<TypingConfig>
@@ -27,6 +34,8 @@ export interface PyWebViewApi {
   list_snippets(): Promise<Snippet[]>
   save_snippet(title: string, text: string, tags: string[]): Promise<Snippet>
   delete_snippet(snippetId: string): Promise<void>
+  clear_all_data(): Promise<ClearDataResult>
+  open_external_url(url: string): Promise<boolean>
   set_always_on_top(enabled: boolean): Promise<boolean>
   set_compact_hud(enabled: boolean): Promise<boolean>
 }

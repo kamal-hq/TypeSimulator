@@ -1,4 +1,12 @@
 import type { EngineSnapshot, RuntimeInfo, SanitizeResult, Snippet, TypingConfig } from '../types/engine'
+import type { ClearDataResult } from '../vite-env'
+
+export const MAX_PAYLOAD_CHARS = 100_000
+export const MAX_SNIPPETS = 200
+export const MAX_SNIPPET_TITLE_CHARS = 120
+export const MAX_SNIPPET_TEXT_CHARS = 50_000
+export const MAX_SNIPPET_TAGS = 10
+export const MAX_TAG_CHARS = 32
 
 export interface ConfigUpdateResult {
   config: TypingConfig
@@ -20,6 +28,8 @@ export interface EngineAdapter {
   listSnippets(): Promise<Snippet[]>
   saveSnippet(snippet: Omit<Snippet, 'id' | 'createdAt'>): Promise<Snippet>
   deleteSnippet(id: string): Promise<void>
+  clearAllData(): Promise<ClearDataResult>
+  openExternalUrl(url: string): Promise<void>
   setAlwaysOnTop(value: boolean): Promise<void>
   setCompactHud(value: boolean): Promise<void>
   onSnapshot(listener: (snapshot: EngineSnapshot) => void): () => void
