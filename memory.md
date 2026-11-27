@@ -6,14 +6,15 @@ This file is the living memory of the project: architectural decisions, constrai
 
 ## 1. Current Project Status
 
-- **Active Phase:** Phase 5 — GitHub Release `v2.0.0` & Vercel Deployment
-- **Repository:** `https://github.com/kamal-hq/TypeSimulator` (branch `main`)
-- **Last Updated:** 2026-11-22
+- **Active Phase:** Security & Compliance Audit Completed on branch `security-compliance-audit` (ready for user review & merge into `main`)
+- **Repository:** `https://github.com/kamal-hq/TypeSimulator` (`main` untouched at `afa13c4`; audit branch `security-compliance-audit`)
+- **Last Updated:** 2026-11-27
 - **Verification Summary:**
-  - `pytest`: **19/19 passing** (`tests/test_sanitizer.py`, `test_cadence.py`, `test_engine_fsm.py`, `test_hotkeys.py`, `test_storage.py`, `test_bridge.py`).
-  - Frontend Web build (`npm run build:web`): **0 TypeScript errors, 0 Vite warnings**, 87.51 kB gzipped JS.
-  - Frontend Desktop build (`npm run build:desktop`): **0 TypeScript errors, 0 Vite warnings**, relative `./` base for PyWebView `file://`.
-  - Standalone Windows Installer: **`installer/output/TypeSimulator-Setup-v2.0.0.exe` (14.67 MB)** compiled cleanly via PyInstaller + Inno Setup 6.7.3 and **passed user smoke test**.
+  - `pytest`: **29/29 passing** (19 core tests + 10 security & keystroke-privacy regression tests in `tests/test_security.py`).
+  - `npm audit`: **0 vulnerabilities** (`frontend/`, 51 audited packages including self-hosted `@fontsource/inter` & `@fontsource/jetbrains-mono`).
+  - Frontend Web build (`npm run build:web`): **0 TypeScript errors, 0 Vite warnings**, zero external Google Fonts CDN references.
+  - Frontend Desktop build (`npm run build:desktop`): **0 TypeScript errors, 0 Vite warnings**, served over `127.0.0.1` with real HTTP `Content-Security-Policy-Report-Only` + WebView2 `NavigationStarting` origin guard.
+  - Compliance & Legal: MIT `LICENSE`, `THIRD_PARTY_NOTICES.md`, real Privacy Policy & Terms of Service (Acceptable Use), confirmed **Clear all local data** UI, and `SECURITY_AUDIT.md` delivered.
 - **Legacy v1 Status:** Archived into `legacy/` (`engine.py`, `main.py`, `ui.py`). Raw Figma export folder removed after full integration into `frontend/`.
 
 ---
