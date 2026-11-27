@@ -1,6 +1,7 @@
-import { AlertTriangle, Gauge, Library, Plus, Search, Shield, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, Gauge, Library, Plus, Search, Shield, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { HotkeyBindings, RuntimeInfo, Snippet, TypingConfig } from '../types/engine'
+import type { LegalDoc } from './LegalPage'
 
 const Toggle = ({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) => (
   <button
@@ -84,6 +85,8 @@ export function InspectorSidebar({
   onLoad,
   onSave,
   onDelete,
+  onClearAllData,
+  onLegal,
 }: {
   config: TypingConfig
   runtime: RuntimeInfo
@@ -96,6 +99,8 @@ export function InspectorSidebar({
   onLoad: (value: string) => void
   onSave: (title: string, tags: string[]) => void
   onDelete: (id: string) => void
+  onClearAllData: () => Promise<void>
+  onLegal: (doc: LegalDoc) => void
 }) {
   const [tab, setTab] = useState<'cadence' | 'safety' | 'snippets'>('cadence')
   const [search, setSearch] = useState('')
@@ -103,6 +108,8 @@ export function InspectorSidebar({
   const [showAddSnippet, setShowAddSnippet] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newTags, setNewTags] = useState('Custom')
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearedNotice, setClearedNotice] = useState(false)
 
   const filtered = useMemo(
     () =>
@@ -143,6 +150,13 @@ export function InspectorSidebar({
     setNewTitle('')
     setNewTags('Custom')
     setShowAddSnippet(false)
+  }
+
+  const handleConfirmClearAll = async () => {
+    await onClearAllData()
+    setConfirmClear(false)
+    setClearedNotice(true)
+    window.setTimeout(() => setClearedNotice(false), 3500)
   }
 
   return (
@@ -255,7 +269,7 @@ export function InspectorSidebar({
             </div>
 
             <div>
-              <p className="section-label">KEY & SANITIZATION RULES</p>
+              <p className="section-label">KEY &amp; SANITIZATION RULES</p>
               <div className="mt-3 space-y-3">
                 <div>
                   <span className="mb-1.5 block text-[10px] text-zinc-500">Newline keystroke</span>
@@ -372,6 +386,64 @@ export function InspectorSidebar({
                 )}
               </span>
             </div>
+
+            <div className="setting-card space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-zinc-200">Local data &amp; privacy</p>
+                <p className="mt-1 text-[10px] leading-4 text-zinc-500">
+                  {runtime.mode === 'desktop'
+                    ? 'Removes config.json and snippets.json from %APPDATA%\\TypeSimulator\\ and resets defaults.'
+                    : 'Clears saved snippets and settings from browser localStorage and resets defaults.'}
+                </p>
+              </div>
+
+              {!confirmClear ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmClear(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20"
+                >
+                  <Trash2 size={13} />Clear all local data
+                </button>
+              ) : (
+                <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                  <p className="text-[10px] leading-4 text-red-200">
+                    Permanently delete all saved snippets, custom hotkeys, and preferences on this device?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmClear(false)}
+                      className="flex-1 rounded-lg border border-white/10 py-1.5 text-[10px] text-zinc-300 hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleConfirmClearAll()}
+                      className="flex-1 rounded-lg bg-red-500 py-1.5 text-[10px] font-bold text-white hover:bg-red-400"
+                    >
+                      Confirm delete
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {clearedNotice && (
+                <p className="flex items-center gap-1.5 text-[10px] text-[#C9EF35]">
+                  <Check size={12} />All local data cleared and defaults restored.
+                </p>
+              )}
+
+              <div className="flex items-center justify-between border-t border-white/8 pt-3 text-[10px] text-zinc-500">
+                <button type="button" onClick={() => onLegal('privacy')} className="hover:text-white">
+                  Privacy Policy
+                </button>
+                <button type="button" onClick={() => onLegal('terms')} className="hover:text-white">
+                  Terms of Service
+                </button>
+              </div>
+            </div>
           </>
         )}
 
@@ -400,6 +472,7 @@ export function InspectorSidebar({
                 <input
                   autoFocus
                   required
+                  maxLength={120}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Snippet title…"

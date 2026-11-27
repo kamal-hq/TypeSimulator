@@ -4,6 +4,7 @@ import { useTypingEngine } from '../hooks/useTypingEngine'
 import { CompactHud } from './CompactHud'
 import { EditorStage } from './EditorStage'
 import { InspectorSidebar } from './InspectorSidebar'
+import type { LegalDoc } from './LegalPage'
 import { PasteBlockedSandbox } from './PasteBlockedSandbox'
 import { TelemetryStrip } from './TelemetryStrip'
 import { TopBar } from './TopBar'
@@ -13,10 +14,12 @@ export function StudioWorkspace({
   mode,
   nativeReady,
   onOverview,
+  onLegal,
 }: {
   mode: 'web' | 'desktop'
   nativeReady: boolean
   onOverview: () => void
+  onLegal: (doc: LegalDoc) => void
 }) {
   const engine = useTypingEngine(mode, nativeReady)
   const [compact, setCompact] = useState(false)
@@ -56,6 +59,8 @@ export function StudioWorkspace({
     )
   }
 
+  const activeError = engine.snapshot.errorMessage || engine.storageError
+
   return (
     <div className="min-h-screen bg-[#090909] text-zinc-100">
       <TopBar
@@ -91,6 +96,13 @@ export function StudioWorkspace({
               if (engine.payload.trim()) setSaveModalOpen(true)
             }}
           />
+
+          {activeError && (
+            <div className="flex items-center gap-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+              <AlertTriangle size={15} className="shrink-0 text-red-400" />
+              <span className="flex-1">{activeError}</span>
+            </div>
+          )}
 
           {engine.snapshot.state === 'PAUSED' && engine.snapshot.pauseReason && (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[.06] px-4 py-3 text-xs text-amber-200">
@@ -141,6 +153,8 @@ export function StudioWorkspace({
           onLoad={engine.setPayload}
           onSave={engine.saveSnippet}
           onDelete={engine.deleteSnippet}
+          onClearAllData={engine.clearAllData}
+          onLegal={onLegal}
         />
       </main>
 
@@ -165,6 +179,7 @@ export function StudioWorkspace({
                 <input
                   autoFocus
                   required
+                  maxLength={120}
                   value={snippetTitle}
                   onChange={(e) => setSnippetTitle(e.target.value)}
                   placeholder="e.g. Production SSH Diagnostics"

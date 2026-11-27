@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Code2, Download, Keyboard, LockKeyhole, Play, ShieldCheck, Sparkles, Target, Waves } from 'lucide-react'
 import { GITHUB_REPO_URL, RELEASE_DOWNLOAD_URL } from '../config/links'
+import type { LegalDoc } from './LegalPage'
 import { Logo } from './TopBar'
 
 const features = [
@@ -9,7 +10,13 @@ const features = [
   [Keyboard, 'Global hotkeys + HUD', 'Control your run without breaking focus. Monitor progress in a compact floating instrument.', 'CONTROL / 04'],
 ] as const
 
-export function OverviewPage({ onStudio }: { onStudio: () => void }) {
+export function OverviewPage({
+  onStudio,
+  onLegal,
+}: {
+  onStudio: () => void
+  onLegal: (doc: LegalDoc) => void
+}) {
   return (
     <div className="min-h-screen overflow-hidden bg-[#090909] text-white">
       <nav className="mx-auto flex h-18 max-w-[1440px] items-center justify-between px-5 md:px-10">
@@ -22,7 +29,7 @@ export function OverviewPage({ onStudio }: { onStudio: () => void }) {
         <a
           href={RELEASE_DOWNLOAD_URL}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-lg bg-[#C9EF35] px-3 py-2 text-xs font-bold text-black hover:bg-[#d8fa55]"
         >
           <Download size={14} />Download .exe
@@ -47,7 +54,7 @@ export function OverviewPage({ onStudio }: { onStudio: () => void }) {
               <a
                 href={RELEASE_DOWNLOAD_URL}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="group flex items-center gap-3 rounded-xl bg-[#C9EF35] px-5 py-4 text-sm font-bold text-black transition hover:-translate-y-0.5 hover:bg-[#d8fa55]"
               >
                 <Download size={17} />Download for Windows{' '}
@@ -176,13 +183,19 @@ export function OverviewPage({ onStudio }: { onStudio: () => void }) {
       <footer className="border-t border-white/8 px-5 py-8 md:px-10">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 text-[10px] text-zinc-600">
           <span>Built by Muhammad Kamal · Independent Portfolio Project</span>
-          <span className="flex items-center gap-4">
+          <span className="flex flex-wrap items-center gap-4">
+            <button onClick={() => onLegal('privacy')} className="hover:text-white">
+              Privacy Policy
+            </button>
+            <button onClick={() => onLegal('terms')} className="hover:text-white">
+              Terms of Service
+            </button>
             <span className="flex items-center gap-1.5"><Check size={12} />Windows 10/11</span>
             <a
               className="flex items-center gap-1.5 hover:text-white"
               href={GITHUB_REPO_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               <Code2 size={13} />GitHub
             </a>
